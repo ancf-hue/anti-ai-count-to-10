@@ -1,0 +1,12 @@
+# robots.txt для сайта anti-ai-count-to-10.vercel.app
+# Разрешаем всем поисковым роботам индексировать сайт
+
+User-agent: *
+Allow: /
+
+# Указываем путь к карте сайта
+Sitemap: https://anti-ai-count-to-10.vercel.app/sitemap.xml
+
+# Запрещаем индексировать служебные страницы (если появятся в будущем)
+# Disallow: /admin/
+# Disallow: /private/
