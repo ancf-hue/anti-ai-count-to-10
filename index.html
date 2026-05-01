@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Анти ИИ Считаем до 10</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        :root { --glass-bg: rgba(255, 255, 255, 0.12); --glass-border: rgba(255, 255, 255, 0.25); }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(ellipse at 20% 80%, rgba(123, 31, 162, 0.3) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 20%, rgba(77, 150, 255, 0.3) 0%, transparent 50%),
+                        linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh; overflow: hidden; color: white;
+        }
+        .bg-particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .particle { position: absolute; width: 4px; height: 4px; background: rgba(255, 255, 255, 0.6); border-radius: 50%; animation: float 15s infinite linear; opacity: 0.7; }
+        @keyframes float { 0% { transform: translateY(100vh) rotate(0deg); opacity: 0; } 10% { opacity: 0.7; } 90% { opacity: 0.7; } 100% { transform: translateY(-100px) rotate(720deg); opacity: 0; } }
+        
+        /* ЗАСТАВКА 16:9 */
+        .splash-screen { position: fixed; inset: 0; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .splash-16x9 { position: relative; width: min(100vw, 177.78vh); height: min(100vh, 56.25vw); background: #000; overflow: hidden; }
+        .splash-16x9 img, .splash-16x9 video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+        .splash-16x9 img { z-index: 2; }
+        .splash-16x9 video { z-index: 1; }
+        .sound-hint { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #FFD93D; padding: 8px 18px; border-radius: 30px; font-size: 0.95rem; font-weight: 600; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 10; box-shadow: 0 0 15px rgba(255,215,0,0.4); backdrop-filter: blur(4px); white-space: nowrap; }
+        .sound-hint.show { opacity: 1; animation: pulseHint 2s infinite; }
+        @keyframes pulseHint { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } }
+        
+        /* ПРИЛОЖЕНИЕ */
+        .main-app { position: fixed; inset: 0; z-index: 10; opacity: 0; visibility: hidden; transition: opacity 0.5s ease, visibility 0.5s ease; overflow-y: auto; }
+        .main-app.active { opacity: 1; visibility: visible; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; position: relative; z-index: 11; padding-bottom: 100px; }
+        .header { text-align: center; padding: 20px 0 10px; }
+        .header-logo { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .header-logo img { width: 55px; height: 55px; object-fit: contain; filter: drop-shadow(0 0 12px rgba(255,255,255,0.6)); animation: floatIcon 3s ease-in-out infinite; }
+        @keyframes floatIcon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .header-logo h1 { font-size: clamp(1.4rem, 5vw, 2.3rem); background: linear-gradient(45deg, #FF6B6B, #FFD93D, #6BCB77, #4D96FF, #FF6B6B); background-size: 300% 300%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: rainbow 3s ease infinite; }
+        @keyframes rainbow { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+        
+        .count-card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 30px; padding: 24px 20px; margin: 20px 0; text-align: center; border: 1px solid var(--glass-border); }
+        .count-title { font-size: 1.3rem; color: #FFD93D; margin-bottom: 16px; font-weight: 700; }
+        .big-number { font-size: 5.2rem; font-weight: 800; background: rgba(0,0,0,0.3); display: inline-block; padding: 8px 32px; border-radius: 100px; margin: 10px 0; color: #FFD93D; letter-spacing: 8px; text-shadow: 0 0 15px #ffd700; font-family: monospace; }
+        .number-name { font-size: 1.4rem; font-weight: bold; background: rgba(255,255,255,0.15); border-radius: 40px; display: inline-block; padding: 6px 25px; margin-top: 8px; }
+        .fruit-emoji-area { font-size: 2.2rem; letter-spacing: 12px; margin: 16px 0; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 60px; }
+        .finger-counter { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+        .finger { font-size: 2rem; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 50px; }
+        .button-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin: 20px 0 10px; }
+        .btn-count { font-size: 1.6rem; font-weight: bold; background: linear-gradient(135deg, #ffd700, #ffb347); border: none; padding: 10px 28px; border-radius: 60px; box-shadow: 0 6px 0 #a5571f; cursor: pointer; font-family: inherit; color: #2d2d2d; min-width: 90px; transition: 0.02s linear; }
+        .btn-count:active { transform: translateY(3px); box-shadow: 0 2px 0 #a5571f; }
+        .btn-reset { background: linear-gradient(135deg, #6BCB77, #4D96FF); box-shadow: 0 6px 0 #2d6a4f; color: white; }
+        
+        .game-card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 30px; padding: 20px; margin: 18px 0; border: 1px solid var(--glass-border); }
+        .game-title { font-size: 1.2rem; text-align: center; color: #FFD93D; margin-bottom: 14px; font-weight: bold; }
+        .question-text { font-size: 1.8rem; font-weight: bold; background: rgba(0,0,0,0.3); display: inline-block; padding: 12px 20px; border-radius: 60px; width: 100%; text-align: center; }
+        .answer-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0 10px; }
+        .num-option { background: linear-gradient(135deg, #ffd7a5, #ffb347); width: 60px; font-size: 1.8rem; font-weight: bold; border-radius: 50px; padding: 10px 0; text-align: center; box-shadow: 0 4px 0 #a5581e; cursor: pointer; color: #2d2d2d; transition: 0.02s linear; }
+        .num-option:active { transform: translateY(2px); box-shadow: 0 1px 0 #a5581e; }
+        .feedback { font-size: 1rem; font-weight: bold; padding: 10px; border-radius: 50px; margin-top: 12px; background: rgba(0,0,0,0.3); color: #FFD93D; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+        .good { background: #4CAF50; color: white; }
+        
+        .support-card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 30px; padding: 32px; margin: 20px 0; text-align: center; }
+        .phone-number { background: rgba(0,0,0,0.35); padding: 16px 20px; border-radius: 60px; margin: 22px 0; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .phone-number span { font-size: 1.5rem; font-weight: 700; background: linear-gradient(45deg, #ffd700, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .copy-btn { background: linear-gradient(45deg, #ffd700, #ffed4e); border: none; padding: 9px 22px; border-radius: 40px; font-weight: 700; color: #2d2d2d; cursor: pointer; }
+        .projects-link a { color: #FFD93D; text-decoration: none; border-bottom: 2px solid #FFD93D; }
+        .thanks { font-size: 1.2rem; margin-top: 18px; color: #FFD93D; font-weight: 600; }
+        
+        .sound-toggle { position: fixed; bottom: 18px; right: 18px; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; font-size: 1.35rem; border: none; }
+        .back-home { position: fixed; bottom: 18px; left: 18px; width: 52px; height: 52px; border-radius: 50%; background: var(--glass-bg); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; font-size: 1.45rem; border: 2px solid var(--glass-border); }
+        .sound-toggle.muted { background: linear-gradient(135deg, #666, #888); }
+        
+        @media (max-width: 550px) {
+            .big-number { font-size: 3.5rem; letter-spacing: 4px; padding: 6px 20px; }
+            .fruit-emoji-area { font-size: 1.6rem; letter-spacing: 6px; }
+            .btn-count { font-size: 1.3rem; padding: 8px 20px; min-width: 70px; }
+            .num-option { width: 55px; font-size: 1.5rem; }
+            .question-text { font-size: 1.4rem; }
+            .sound-hint { white-space: nowrap; font-size: 0.8rem; padding: 6px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-particles" id="particles"></div>
+
+<div class="splash-screen" id="splashScreen">
+    <div class="splash-16x9">
+        <img id="splashPhoto" src="frame.jpg" alt="заставка" draggable="false" loading="eager">
+        <video id="splashVideo" src="cube.mp4" muted playsinline preload="auto"></video>
+    </div>
+    <div class="sound-hint" id="soundHint">🔊 Коснитесь экрана для звука</div>
+</div>
+
+<div class="main-app" id="mainApp">
+    <div class="container">
+        <div class="header">
+            <div class="header-logo">
+                <img src="favicon.ico" alt="Логотип" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%234D96FF%22/%3E%3Ctext x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22%3E🔟%3C/text%3E%3C/svg%3E'">
+                <h1>Анти ИИ Считаем до 10</h1>
+            </div>
+        </div>
+
+        <div class="count-card">
+            <div class="count-title">⭐ СКОЛЬКО? ⭐</div>
+            <div class="big-number" id="currentNumberDisplay">5</div>
+            <div class="number-name" id="numberWord">пять</div>
+            <div class="fruit-emoji-area" id="fruitEmojis">⭐⭐⭐⭐⭐</div>
+            <div class="finger-counter" id="fingerCounter"></div>
+            <div class="button-group">
+                <button class="btn-count" id="minusBtn">◀ МЕНЬШЕ</button>
+                <button class="btn-count btn-reset" id="resetBtn">🔁 5</button>
+                <button class="btn-count" id="plusBtn">БОЛЬШЕ ▶</button>
+            </div>
+        </div>
+
+        <div class="game-card">
+            <div class="game-title">🐣 ПОСЧИТАЙ И НАЖМИ 🐣</div>
+            <div class="question-text" id="quizQuestion">🐸 🐸 🐸</div>
+            <div class="answer-buttons" id="answerOptions"></div>
+            <div class="feedback" id="quizFeedback">👉 нажми на правильное число!</div>
+        </div>
+
+        <div class="game-card">
+            <div class="game-title">🧸 СОСЕДИ ЧИСЛА</div>
+            <div class="question-text" id="neighborQuestion">❓ Найди соседей числа 5</div>
+            <div class="answer-buttons" id="neighborOptions"></div>
+            <div class="feedback" id="neighborFeedback">🐻 какая цифра слева и справа?</div>
+        </div>
+
+        <div class="support-card">
+            <div class="support-title">🤝 ПОДДЕРЖАТЬ ПРОЕКТ</div>
+            <div class="phone-number">
+                <span>📱 8-920-227-56-76</span>
+                <button class="copy-btn" id="copyPhoneBtn">📋 Копировать</button>
+            </div>
+            <div id="copyMessage" style="font-size:0.85rem;"></div>
+            <div class="thanks">❤️ Спасибо за поддержку!</div>
+            <div class="projects-link">🌟 НАШИ ПРОЕКТЫ 👉 <a href="https://ancf-hue.github.io/" target="_blank">ancf-hue.github.io</a></div>
+        </div>
+    </div>
+</div>
+
+<button class="sound-toggle" id="soundToggle" title="Звук">🔊</button>
+<button class="back-home" id="backHomeBtn" title="На главную">🏠</button>
+
+<script>
+    // ========== ЧАСТИЦЫ ==========
+    function createParticles() {
+        const c = document.getElementById('particles');
+        for(let i=0; i<40; i++) {
+            const p = document.createElement('div'); p.className='particle';
+            p.style.left = Math.random()*100+'%'; p.style.animationDelay = Math.random()*15+'s';
+            p.style.animationDuration = (10+Math.random()*12)+'s'; c.appendChild(p);
+        }
+    } createParticles();
+    
+    // ========== 🔊 ЗВУКОВАЯ ОЧЕРЕДЬ (БЕЗ НАЛОЖЕНИЙ) ==========
+    let soundEnabled = true;
+    const soundCache = {};
+    const soundQueue = [];
+    let isPlaying = false;
+    let currentAudio = null;
+    let playTimeout = null;
+
+    function preloadSounds() {
+        // Используем только существующие файлы: correct, wrong, clap, 1-10
+        const files = ['correct', 'wrong', 'clap'];
+        for(let i=1; i<=10; i++) files.push(String(i));
+        files.forEach(name => {
+            try { 
+                const a = new Audio(`${name}.mp3`); 
+                a.preload='auto'; 
+                a.load(); 
+                soundCache[name] = a; 
+            } 
+            catch(e) { console.warn(`Нет ${name}.mp3`); }
+        });
+        // Если intro нет, используем correct как стартовый
+        if(!soundCache['intro'] && soundCache['correct']) {
+            soundCache['intro'] = soundCache['correct'];
+        }
+    }
+
+    function queueSound(name) {
+        if(!soundEnabled) return;
+        const audio = soundCache[name];
+        if(!audio) return;
+        
+        soundQueue.push(name);
+        if(!isPlaying) playNext();
+    }
+
+    function playNext() {
+        if(soundQueue.length===0) {
+            isPlaying = false;
+            currentAudio = null;
+            return;
+        }
+        isPlaying = true;
+        const name = soundQueue.shift();
+        const audio = soundCache[name];
+        currentAudio = audio;
+        audio.currentTime = 0;
+
+        const finish = () => {
+            if(playTimeout) clearTimeout(playTimeout);
+            audio.removeEventListener('ended', finish);
+            audio.removeEventListener('error', finish);
+            currentAudio = null;
+            playNext();
+        };
+        
+        audio.addEventListener('ended', finish);
+        audio.addEventListener('error', finish);
+        
+        const p = audio.play();
+        if(p && typeof p.catch === 'function') {
+            p.catch((err) => {
+                console.log(`Звук ${name} не воспроизвёлся:`, err);
+                finish();
+            });
+        }
+        
+        // Запасной таймер на случай, если звук завис
+        playTimeout = setTimeout(() => {
+            if(isPlaying && currentAudio === audio) {
+                finish();
+            }
+        }, (audio.duration || 2) * 1000 + 200);
+    }
+
+    function clearQueue() {
+        soundQueue.length = 0;
+        if(playTimeout) clearTimeout(playTimeout);
+        if(currentAudio) { 
+            currentAudio.pause(); 
+            currentAudio.currentTime = 0; 
+            currentAudio = null; 
+        }
+        isPlaying = false;
+    }
+
+    // ========== ЗАСТАВКА 2с → 3с → 5с ==========
+    const splashScreen = document.getElementById('splashScreen');
+    const mainApp = document.getElementById('mainApp');
+    const splashPhoto = document.getElementById('splashPhoto');
+    const splashVideo = document.getElementById('splashVideo');
+    let splashSoundPlayed = false;
+    let splashTimeoutIds = [];
+
+    function playSplashSound() {
+        if(splashSoundPlayed || !soundEnabled) return;
+        const audio = soundCache['intro'] || soundCache['correct'];
+        if(!audio) return;
+        
+        audio.currentTime = 0;
+        const p = audio.play();
+        if(p && typeof p.catch === 'function') {
+            p.catch(() => {
+                // Показываем подсказку
+                document.getElementById('soundHint').classList.add('show');
+                const unlock = () => {
+                    if(!splashSoundPlayed && soundEnabled) {
+                        audio.currentTime = 0;
+                        audio.play().catch(()=>{});
+                        splashSoundPlayed = true;
+                        document.getElementById('soundHint').classList.remove('show');
+                    }
+                    document.removeEventListener('touchstart', unlock);
+                    document.removeEventListener('click', unlock);
+                };
+                document.addEventListener('touchstart', unlock, {once:true});
+                document.addEventListener('click', unlock, {once:true});
+            });
+        } else {
+            splashSoundPlayed = true;
+        }
+    }
+
+    function startSplash() {
+        playSplashSound();
+        
+        // Фото видимо, видео скрыто
+        splashPhoto.style.zIndex = '2';
+        splashVideo.style.zIndex = '1';
+        splashVideo.pause();
+        
+        // Через 2 секунды: переключаем на видео
+        splashTimeoutIds.push(setTimeout(() => {
+            splashPhoto.style.zIndex = '0';
+            splashVideo.style.zIndex = '2';
+            splashVideo.muted = true;
+            splashVideo.play().catch(() => {});
+        }, 2000));
+        
+        // Через 5 секунд: убираем заставку
+        splashTimeoutIds.push(setTimeout(() => {
+            splashScreen.style.opacity = '0';
+            splashScreen.style.transition = 'opacity 0.5s ease';
+            splashTimeoutIds.push(setTimeout(() => {
+                splashScreen.style.display = 'none';
+                mainApp.classList.add('active');
+            }, 500));
+        }, 5000));
+    }
+    
+    if(splashPhoto.complete && splashPhoto.naturalWidth) {
+        startSplash();
+    } else {
+        splashPhoto.onload = startSplash;
+        splashPhoto.onerror = startSplash;
+        splashTimeoutIds.push(setTimeout(startSplash, 3000));
+    }
+    
+    // ========== СЧЁТЧИК ==========
+    let currentNumber = 5;
+    const numberWords = ["ноль","один","два","три","четыре","пять","шесть","семь","восемь","девять","десять"];
+    const fruitSets = {
+        1:["🍎"],2:["🍎","🍌"],3:["🐟","🐟","🐟"],4:["🐞","🐞","🐞","🐞"],
+        5:["⭐","⭐","⭐","⭐","⭐"],6:["🍒","🍒","🍒","🍒","🍒","🍒"],
+        7:["🌈","🌈","🌈","🌈","🌈","🌈","🌈"],8:["🐙","🐙","🐙","🐙","🐙","🐙","🐙","🐙"],
+        9:["🎈","🎈","🎈","🎈","🎈","🎈","🎈","🎈","🎈"],
+        10:["🐧","🐧","🐧","🐧","🐧","🐧","🐧","🐧","🐧","🐧"]
+    };
+    function getEmojiString(n) { 
+        return n===0 ? "❌ ноль" : (fruitSets[n] || Array(n).fill("🔹")).join(" "); 
+    }
+    
+    function updateUI() {
+        document.getElementById('currentNumberDisplay').innerText = currentNumber;
+        document.getElementById('numberWord').innerText = numberWords[currentNumber];
+        document.getElementById('fruitEmojis').innerHTML = currentNumber===0 ? "😢 ноль предметов" : getEmojiString(currentNumber);
+        let h=""; 
+        if(currentNumber>0 && currentNumber<=10) { 
+            for(let i=0;i<currentNumber;i++) { 
+                h+=`<span class="finger">🖐️</span>`; 
+                if(i===4 && currentNumber>5) h+=`<span style="width:6px;"></span>`; 
+            } 
+        } else if(currentNumber===0) h="<span class='finger'>✊</span>";
+        document.getElementById('fingerCounter').innerHTML = h;
+        if(currentNumber>=1 && currentNumber<=10) queueSound(String(currentNumber));
+    }
+    
+    document.getElementById('minusBtn').onclick = () => { 
+        if(currentNumber>0) { currentNumber--; updateUI(); } 
+    };
+    document.getElementById('plusBtn').onclick = () => { 
+        if(currentNumber<10) { currentNumber++; updateUI(); } 
+    };
+    document.getElementById('resetBtn').onclick = () => { 
+        currentNumber=5; updateUI(); 
+    };
+    
+    // ========== ИГРА 1: ПОСЧИТАЙ ==========
+    let quizNum = 3;
+    const quizEm = ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐸","🐒","🐔","🐧","🦋","🌸","🍎"];
+    let quizTimeout = null;
+    
+    function nextQuiz() {
+        if(quizTimeout) clearTimeout(quizTimeout);
+        let c = Math.floor(Math.random()*10)+1;
+        let e = quizEm[Math.floor(Math.random()*quizEm.length)];
+        quizNum = c;
+        document.getElementById('quizQuestion').innerHTML = e.repeat(c) + "  → сколько?";
+        const fb = document.getElementById('quizFeedback'); 
+        fb.innerHTML="🤔 выбери правильную цифру!"; 
+        fb.classList.remove("good");
+    }
+    
+    function buildQuizBtns() {
+        const c = document.getElementById('answerOptions'); 
+        c.innerHTML="";
+        for(let i=1;i<=10;i++){
+            const b = document.createElement('div'); 
+            b.className='num-option'; 
+            b.innerText=i; 
+            b.dataset.value=i;
+            b.onclick = () => {
+                const s = parseInt(b.dataset.value); 
+                const fb = document.getElementById('quizFeedback');
+                if(s===quizNum) { 
+                    fb.innerHTML="✅ Правильно! Молодец! 🎉"; 
+                    fb.classList.add("good"); 
+                    queueSound('correct'); 
+                    queueSound('clap'); 
+                    if(quizTimeout) clearTimeout(quizTimeout);
+                    quizTimeout = setTimeout(nextQuiz, 1800); 
+                } else { 
+                    fb.innerHTML=`😲 Не угадал! тут ${quizNum}. попробуй ещё!`; 
+                    fb.classList.remove("good"); 
+                    queueSound('wrong'); 
+                }
+            }; 
+            c.appendChild(b);
+        }
+    }
+    
+    // ========== ИГРА 2: СОСЕДИ ==========
+    let ns = {l:0, r:0, lDone:false, rDone:false, n:5};
+    let neighborTimeout = null;
+    
+    function nextNeighbor() {
+        if(neighborTimeout) clearTimeout(neighborTimeout);
+        ns.n = Math.floor(Math.random()*8)+2; 
+        ns.l=ns.n-1; 
+        ns.r=ns.n+1; 
+        ns.lDone=false; 
+        ns.rDone=false;
+        document.getElementById('neighborQuestion').innerHTML = `🔢 Соседи числа ${ns.n}?`;
+        let opts = [ns.l, ns.r]; 
+        while(opts.length<4){ 
+            let f=Math.floor(Math.random()*10)+1; 
+            if(!opts.includes(f) && f!==ns.n) opts.push(f); 
+        } 
+        opts.sort(()=>Math.random()-0.5);
+        const c = document.getElementById('neighborOptions'); 
+        c.innerHTML="";
+        opts.forEach(v=>{
+            const b = document.createElement('div'); 
+            b.className='num-option'; 
+            b.innerText=v; 
+            b.dataset.num=v;
+            b.onclick = () => {
+                const p = parseInt(b.dataset.num); 
+                const fb = document.getElementById('neighborFeedback');
+                if(!ns.lDone && p===ns.l) { 
+                    ns.lDone=true; 
+                    fb.innerHTML=`✅ ${ns.l} — верно!`; 
+                    fb.classList.add("good"); 
+                    queueSound('correct'); 
+                    if(ns.lDone && ns.rDone) winNeighbor(); 
+                    return; 
+                }
+                if(!ns.rDone && p===ns.r) { 
+                    ns.rDone=true; 
+                    fb.innerHTML=`✅ ${ns.r} — верно!`; 
+                    fb.classList.add("good"); 
+                    queueSound('correct'); 
+                    if(ns.lDone && ns.rDone) winNeighbor(); 
+                    return; 
+                }
+                if((p===ns.l && ns.lDone)||(p===ns.r && ns.rDone)) { 
+                    fb.innerHTML="🎈 Уже нашёл! Найди второго!"; 
+                    return; 
+                }
+                fb.innerHTML=`😕 ${p} не сосед ${ns.n}`; 
+                fb.classList.remove("good"); 
+                queueSound('wrong');
+            }; 
+            c.appendChild(b);
+        });
+        document.getElementById('neighborFeedback').innerHTML="🐣 Тапай на соседей!"; 
+        document.getElementById('neighborFeedback').classList.remove("good");
+    }
+    
+    function winNeighbor() {
+        const fb = document.getElementById('neighborFeedback'); 
+        fb.innerHTML="🎉 УРА! Оба соседа! 🎉"; 
+        fb.classList.add("good");
+        queueSound('clap');
+        if(neighborTimeout) clearTimeout(neighborTimeout);
+        neighborTimeout = setTimeout(nextNeighbor, 2000);
+    }
+    
+    // ========== КНОПКИ ==========
+    document.getElementById('soundToggle').onclick = () => {
+        soundEnabled=!soundEnabled;
+        const btn = document.getElementById('soundToggle');
+        btn.textContent = soundEnabled?'🔊':'🔇';
+        btn.classList.toggle('muted', !soundEnabled);
+        if(!soundEnabled) { 
+            clearQueue(); 
+        } else { 
+            queueSound('correct'); 
+        }
+    };
+    
+    document.getElementById('backHomeBtn').onclick = () => window.scrollTo({top:0, behavior:'smooth'});
+    
+    document.getElementById('copyPhoneBtn').onclick = async () => {
+        const m = document.getElementById('copyMessage');
+        try { 
+            await navigator.clipboard.writeText('8-920-227-56-76'); 
+            m.innerHTML='<span style="background:#4CAF50;padding:4px 12px;border-radius:20px;color:white;">✅ Скопировано!</span>'; 
+        } catch { 
+            m.innerHTML='<span style="color:#ff6b6b;">❌ Ошибка</span>'; 
+        }
+        setTimeout(()=>m.innerHTML='', 2000);
+    };
+    
+    // ========== СТАРТ ==========
+    function init() {
+        preloadSounds(); 
+        updateUI(); 
+        buildQuizBtns(); 
+        nextQuiz(); 
+        nextNeighbor();
+    }
+    init();
+</script>
+</body>
+</html>
